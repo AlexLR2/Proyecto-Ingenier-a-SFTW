@@ -192,4 +192,4 @@ Proyecto académico — Ingeniería de Software · 2025.
 
 ## 🤝 Autor
 
-Desarrollado como parte del proyecto SGMV para la asignatura de Ingeniería de Software.
+Diego Leon Reyes
