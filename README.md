@@ -31,8 +31,7 @@
 ## 🖼️ Capturas de pantalla
 
 ### Login
-![Login](screenshots/login.png)
-
+![Login](sgmv/screenshots/login.png)
 ### Dashboard — Vista general
 ![Dashboard](screenshots/dashboard.png)
 
