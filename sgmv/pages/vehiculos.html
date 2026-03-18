@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Mis Vehículos</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(10,22,40,.55); z-index:200; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--white); border-radius:var(--radius-lg); padding:32px; width:540px; max-width:95vw; box-shadow:var(--shadow-lg); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .modal-title { font-family:var(--font-display); font-size:20px; font-weight:800; color:var(--text-1); }
+    .modal-close { font-size:20px; color:var(--text-3); cursor:pointer; }
+    .modal-footer { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; border-top:1px solid var(--border); padding-top:20px; }
+  </style>
+</head>
+<body>
+<div id="nav-container"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Mis Vehículos</span>
+      <span class="topbar-subtitle">— Gestión de flota</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" onclick="openModal()">+ Agregar vehículo</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-header" style="margin-bottom:8px;">
+      <div>
+        <div class="page-title">Flota vehicular</div>
+        <div class="page-subtitle">3 vehículos registrados</div>
+      </div>
+      <div class="flex gap-8">
+        <input type="text" class="form-control" placeholder="🔍  Buscar vehículo..." style="width:220px;" oninput="filterCards(this.value)">
+      </div>
+    </div>
+
+    <div style="height:20px;"></div>
+
+    <div class="vehicle-grid" id="vehicle-grid"></div>
+  </div>
+</div>
+
+<!-- Modal Agregar Vehículo -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🚗 Agregar vehículo</span>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <form onsubmit="addVehicle(event)">
+      <div class="form-grid" style="gap:16px;margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">Marca *</label>
+          <input type="text" class="form-control" id="f-marca" placeholder="ej. Toyota" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modelo *</label>
+          <input type="text" class="form-control" id="f-modelo" placeholder="ej. Hilux">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Año *</label>
+          <input type="number" class="form-control" id="f-anio" placeholder="2021" min="1990" max="2025">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Placa *</label>
+          <input type="text" class="form-control" id="f-placa" placeholder="XYZ-789">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kilometraje actual</label>
+          <input type="number" class="form-control" id="f-km" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <select class="form-control" id="f-color">
+            <option>Blanco</option><option>Negro</option><option>Gris</option>
+            <option>Rojo</option><option>Azul</option><option>Plata</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas adicionales</label>
+        <textarea class="form-control" id="f-notas" rows="2" placeholder="Observaciones sobre el vehículo..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar vehículo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../js/nav.js"></script>
+<script>
+document.getElementById('nav-container').innerHTML = SGMV.renderSidebar('vehiculos');
+
+const icons = ['🚗','🚙','🛻','🚐'];
+let vehicles = [
+  { id:1, marca:'Mazda',      modelo:'3',     anio:2019, placa:'ABC-123', km:68400, color:'Rojo',   status:'red',   icon:'🚗', services:5,  lastService:'2025-04-22', cost:280000 },
+  { id:2, marca:'Toyota',     modelo:'Hilux', anio:2021, placa:'XYZ-789', km:41200, color:'Plata',  status:'amber', icon:'🛻', services:4,  lastService:'2025-05-10', cost:120000 },
+  { id:3, marca:'Chevrolet',  modelo:'Spark', anio:2018, placa:'DEF-456', km:92100, color:'Blanco', status:'amber', icon:'🚗', services:3,  lastService:'2025-04-05', cost:45000  },
+];
+
+const statusLabel = { red:'Vencido', amber:'Próximo', green:'Al día' };
+const statusClass = { red:'red', amber:'amber', green:'green' };
+
+function renderCards(list) {
+  document.getElementById('vehicle-grid').innerHTML = list.length ? list.map(v => `
+    <div class="vehicle-card" id="vc-${v.id}">
+      <div class="vehicle-card-header">
+        <div class="vehicle-icon">${v.icon}</div>
+        <div>
+          <div class="vehicle-name">${v.marca} ${v.modelo}</div>
+          <div class="vehicle-plate">${v.placa} · ${v.anio}</div>
+        </div>
+        <div style="margin-left:auto;">
+          <div class="semaphore-wrap">
+            <div class="semaphore-light s-red   ${v.status==='red'   ?'active':''}"></div>
+            <div class="semaphore-light s-amber ${v.status==='amber' ?'active':''}"></div>
+            <div class="semaphore-light s-green ${v.status==='green' ?'active':''}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="vehicle-card-body">
+        <div class="vehicle-meta">
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Kilometraje</span><span class="vehicle-meta-val">${v.km.toLocaleString()} km</span></div>
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Color</span><span class="vehicle-meta-val">${v.color}</span></div>
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Servicios</span><span class="vehicle-meta-val">${v.services} registros</span></div>
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Último servicio</span><span class="vehicle-meta-val">${v.lastService}</span></div>
+          <div class="vehicle-meta-row">
+            <span class="vehicle-meta-key">Estado</span>
+            <span class="badge ${statusClass[v.status]}">${statusLabel[v.status]}</span>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill ${v.status}" style="width:${v.status==='red'?'95':v.status==='amber'?'65':'30'}%"></div></div>
+      </div>
+      <div class="vehicle-card-footer">
+        <button class="btn btn-secondary btn-sm w-full" onclick="location.href='historial.html'">📋 Historial</button>
+        <button class="btn btn-ghost btn-sm" onclick="editVehicle(${v.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${v.id})">🗑</button>
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🚗</div><div class="empty-title">Sin vehículos</div><div class="empty-sub">Agrega tu primer vehículo con el botón de arriba</div></div>`;
+}
+
+renderCards(vehicles);
+
+function filterCards(q) {
+  const filtered = vehicles.filter(v => `${v.marca} ${v.modelo} ${v.placa}`.toLowerCase().includes(q.toLowerCase()));
+  renderCards(filtered);
+}
+
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+let nextId = 4;
+function addVehicle(e) {
+  e.preventDefault();
+  const v = {
+    id: nextId++,
+    marca: document.getElementById('f-marca').value,
+    modelo: document.getElementById('f-modelo').value,
+    anio: document.getElementById('f-anio').value,
+    placa: document.getElementById('f-placa').value,
+    km: parseInt(document.getElementById('f-km').value) || 0,
+    color: document.getElementById('f-color').value,
+    status: 'green', icon: '🚗', services: 0, lastService: '—', cost: 0
+  };
+  vehicles.push(v);
+  renderCards(vehicles);
+  closeModal();
+  e.target.reset();
+}
+
+function deleteVehicle(id) {
+  if (confirm('¿Eliminar este vehículo y todo su historial?')) {
+    vehicles = vehicles.filter(v => v.id !== id);
+    renderCards(vehicles);
+  }
+}
+function editVehicle(id) { alert('Función de edición disponible en la versión completa.'); }
+</script>
+</body>
+</html>

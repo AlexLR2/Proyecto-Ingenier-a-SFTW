@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Historial</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .filter-bar { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; margin-bottom:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+    .summary-strip { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+    .sum-chip { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 18px; display:flex; flex-direction:column; }
+    .sum-chip-val { font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--navy); }
+    .sum-chip-label { font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+  </style>
+</head>
+<body>
+<div id="nav-container"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Historial</span>
+      <span class="topbar-subtitle">— Registro completo de mantenimientos</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">📤 Exportar</button>
+      <button class="btn btn-primary btn-sm" onclick="location.href='mantenimientos.html'">+ Nuevo</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Resumen rápido -->
+    <div class="summary-strip">
+      <div class="sum-chip"><span class="sum-chip-val">12</span><span class="sum-chip-label">Total servicios</span></div>
+      <div class="sum-chip"><span class="sum-chip-val">$1.245.000</span><span class="sum-chip-label">Gasto total</span></div>
+      <div class="sum-chip"><span class="sum-chip-val">3</span><span class="sum-chip-label">Vehículos</span></div>
+      <div class="sum-chip"><span class="sum-chip-val">2025</span><span class="sum-chip-label">Año en curso</span></div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label class="form-label">Vehículo</label>
+        <select class="form-control" id="f-car" onchange="applyFilters()">
+          <option value="">Todos los vehículos</option>
+          <option>Mazda 3</option>
+          <option>Toyota Hilux</option>
+          <option>Chevrolet Spark</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:160px;">
+        <label class="form-label">Tipo de servicio</label>
+        <select class="form-control" id="f-type" onchange="applyFilters()">
+          <option value="">Todos los tipos</option>
+          <option>Cambio de aceite</option>
+          <option>Revisión de frenos</option>
+          <option>Cambio de pastillas</option>
+          <option>Rotación de llantas</option>
+          <option>Cambio filtro aire</option>
+          <option>Cambio de batería</option>
+          <option>Diagnóstico general</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:130px;">
+        <label class="form-label">Desde</label>
+        <input type="date" class="form-control" id="f-from" value="2025-01-01" onchange="applyFilters()">
+      </div>
+      <div class="form-group" style="flex:1;min-width:130px;">
+        <label class="form-label">Hasta</label>
+        <input type="date" class="form-control" id="f-to" onchange="applyFilters()">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Limpiar</button>
+    </div>
+
+    <!-- Tabla historial -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Registros de mantenimiento</span>
+        <span id="count-label" style="font-size:13px;color:var(--text-3);">12 registros</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Vehículo</th>
+                <th>Tipo de servicio</th>
+                <th>Fecha</th>
+                <th>Kilometraje</th>
+                <th>Taller / Mecánico</th>
+                <th>Costo</th>
+                <th>Próximo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/nav.js"></script>
+<script>
+document.getElementById('nav-container').innerHTML = SGMV.renderSidebar('historial');
+document.getElementById('f-to').value = new Date().toISOString().split('T')[0];
+
+const allData = [
+  { car:'Toyota Hilux',    type:'Cambio de aceite',      date:'2025-05-10', km:'40.800', taller:'Lubricar Express',   cost:'$120.000', next:'2025-11-10' },
+  { car:'Mazda 3',         type:'Cambio de pastillas',   date:'2025-04-22', km:'67.200', taller:'Frenos & Más',        cost:'$280.000', next:'2026-04-22' },
+  { car:'Chevrolet Spark', type:'Cambio filtro aire',    date:'2025-04-05', km:'91.500', taller:'AutoServicio Rápido', cost:'$45.000',  next:'2025-10-05' },
+  { car:'Mazda 3',         type:'Rotación de llantas',   date:'2025-03-18', km:'65.000', taller:'Llantas El Centro',   cost:'$60.000',  next:'2025-09-18' },
+  { car:'Toyota Hilux',    type:'Revisión de frenos',    date:'2025-02-28', km:'38.000', taller:'Frenos & Más',        cost:'$85.000',  next:'2025-08-28' },
+  { car:'Mazda 3',         type:'Diagnóstico general',   date:'2025-02-10', km:'63.000', taller:'Centro Diagnóstico',  cost:'$70.000',  next:'—'          },
+  { car:'Chevrolet Spark', type:'Cambio de batería',     date:'2025-01-20', km:'89.000', taller:'Electro-Auto',        cost:'$180.000', next:'2027-01-20' },
+  { car:'Toyota Hilux',    type:'Cambio de aceite',      date:'2024-11-15', km:'35.200', taller:'Lubricar Express',    cost:'$115.000', next:'2025-05-15' },
+  { car:'Mazda 3',         type:'Cambio de aceite',      date:'2024-10-30', km:'60.500', taller:'Lubricar Express',    cost:'$110.000', next:'2025-04-30' },
+  { car:'Chevrolet Spark', type:'Rotación de llantas',   date:'2024-09-12', km:'85.000', taller:'Llantas El Centro',   cost:'$60.000',  next:'2025-03-12' },
+  { car:'Mazda 3',         type:'Revisión de frenos',    date:'2024-08-05', km:'57.000', taller:'Frenos & Más',        cost:'$90.000',  next:'2025-02-05' },
+  { car:'Toyota Hilux',    type:'Diagnóstico general',   date:'2024-07-20', km:'30.000', taller:'Centro Diagnóstico',  cost:'$70.000',  next:'—'          },
+];
+
+let displayData = [...allData];
+
+const carIcons = { 'Mazda 3':'🚗', 'Toyota Hilux':'🛻', 'Chevrolet Spark':'🚗' };
+
+function renderTable(data) {
+  document.getElementById('count-label').textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+  document.getElementById('hist-body').innerHTML = data.length ? data.map((r, i) => `
+    <tr>
+      <td style="color:var(--text-3);font-size:12px;">${i+1}</td>
+      <td><strong>${carIcons[r.car] || '🚗'} ${r.car}</strong></td>
+      <td>${r.type}</td>
+      <td>${r.date}</td>
+      <td style="color:var(--text-2);">${r.km} km</td>
+      <td style="color:var(--text-3);font-size:13px;">${r.taller}</td>
+      <td style="font-weight:700;color:var(--navy);">${r.cost}</td>
+      <td style="font-size:12px;color:var(--text-3);">${r.next}</td>
+      <td><button class="btn btn-ghost btn-sm">👁</button></td>
+    </tr>
+  `).join('') : `<tr><td colspan="9" style="padding:40px;text-align:center;color:var(--text-3);">Sin resultados para los filtros aplicados.</td></tr>`;
+}
+
+renderTable(allData);
+
+function applyFilters() {
+  const car  = document.getElementById('f-car').value;
+  const type = document.getElementById('f-type').value;
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  displayData = allData.filter(r =>
+    (!car  || r.car === car) &&
+    (!type || r.type === type) &&
+    (!from || r.date >= from) &&
+    (!to   || r.date <= to)
+  );
+  renderTable(displayData);
+}
+
+function clearFilters() {
+  ['f-car','f-type'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-from').value = '2025-01-01';
+  document.getElementById('f-to').value = new Date().toISOString().split('T')[0];
+  renderTable(allData);
+}
+</script>
+</body>
+</html>

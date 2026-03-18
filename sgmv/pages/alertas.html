@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Alertas</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .alert-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .18s;
+    }
+    .alert-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .alert-card.red   { border-left: 4px solid var(--red); }
+    .alert-card.amber { border-left: 4px solid var(--amber); }
+    .alert-card.green { border-left: 4px solid var(--green); }
+    .alert-meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; }
+    .alert-meta span { font-size:12px; color:var(--text-3); }
+    .filter-tabs { display:flex; gap:6px; margin-bottom:20px; }
+    .tab { padding:8px 18px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); color:var(--text-2); background:var(--white); transition:.15s; }
+    .tab.active { background:var(--navy); color:var(--white); border-color:var(--navy); }
+    .tab:hover:not(.active) { background:var(--surface); }
+  </style>
+</head>
+<body>
+<div id="nav-container"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Alertas</span>
+      <span class="topbar-subtitle">— Sistema de semáforo preventivo</span>
+    </div>
+    <div class="topbar-actions">
+      <span style="font-size:13px;color:var(--text-3);">Actualizado: hoy, 09:14 a.m.</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Resumen semáforo -->
+    <div class="stat-grid" style="margin-bottom:24px;">
+      <div class="stat-card" style="border-left:3px solid var(--red);">
+        <div class="stat-icon red">🔴</div>
+        <div>
+          <div class="stat-value" style="color:var(--red);">1</div>
+          <div class="stat-label">Vencidos</div>
+          <div class="stat-delta" style="color:var(--red);">Acción inmediata</div>
+        </div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid var(--amber);">
+        <div class="stat-icon amber">🟡</div>
+        <div>
+          <div class="stat-value" style="color:var(--amber);">2</div>
+          <div class="stat-label">Próximos a vencer</div>
+          <div class="stat-delta" style="color:var(--amber);">En los próximos 15 días</div>
+        </div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid var(--green);">
+        <div class="stat-icon teal">🟢</div>
+        <div>
+          <div class="stat-value" style="color:var(--green);">3</div>
+          <div class="stat-label">Al día</div>
+          <div class="stat-delta">Sin acción requerida</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leyenda semáforo -->
+    <div class="card mb-24" style="margin-bottom:20px;">
+      <div class="card-header"><span class="card-title">🚦 Criterios del Semáforo</span></div>
+      <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+        <div style="text-align:center;padding:12px;background:rgba(239,83,80,.05);border-radius:8px;">
+          <div style="font-size:28px;margin-bottom:6px;">🔴</div>
+          <div style="font-weight:700;color:var(--red);margin-bottom:4px;">Rojo — Vencido</div>
+          <div style="font-size:12px;color:var(--text-3);">Fecha superada O kilometraje excedido. Requiere atención inmediata.</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:rgba(255,179,0,.05);border-radius:8px;">
+          <div style="font-size:28px;margin-bottom:6px;">🟡</div>
+          <div style="font-weight:700;color:#B7860B;margin-bottom:4px;">Amarillo — Próximo</div>
+          <div style="font-size:12px;color:var(--text-3);">Faltan ≤15 días O ≤500 km para el siguiente servicio programado.</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:rgba(38,166,154,.05);border-radius:8px;">
+          <div style="font-size:28px;margin-bottom:6px;">🟢</div>
+          <div style="font-weight:700;color:var(--green);margin-bottom:4px;">Verde — Al día</div>
+          <div style="font-size:12px;color:var(--text-3);">El mantenimiento está vigente. Quedan más de 15 días o más de 500 km.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-tabs">
+      <button class="tab active" onclick="filterAlerts('all',this)">Todas (6)</button>
+      <button class="tab" onclick="filterAlerts('red',this)">🔴 Vencidas (1)</button>
+      <button class="tab" onclick="filterAlerts('amber',this)">🟡 Próximas (2)</button>
+      <button class="tab" onclick="filterAlerts('green',this)">🟢 Al día (3)</button>
+    </div>
+
+    <!-- Lista de alertas -->
+    <div style="display:flex;flex-direction:column;gap:12px;" id="alerts-container"></div>
+  </div>
+</div>
+
+<script src="../js/nav.js"></script>
+<script>
+document.getElementById('nav-container').innerHTML = SGMV.renderSidebar('alertas');
+
+const alerts = [
+  {
+    status:'red', icon:'🚨', vehicle:'Mazda 3 (ABC-123)', service:'Cambio de aceite',
+    detail:'Venció hace 12 días (25-may-2025)', km:'68.400 km actuales | Límite: 68.000 km',
+    taller:'Lubricar Express', action:'Registrar mantenimiento', urgency:'Acción inmediata requerida'
+  },
+  {
+    status:'amber', icon:'⚠️', vehicle:'Toyota Hilux (XYZ-789)', service:'Revisión de frenos',
+    detail:'Vence en 8 días (14-jun-2025)', km:'41.200 km actuales | Próximo: 41.500 km',
+    taller:'Frenos & Más', action:'Agendar cita', urgency:'Próximo en 8 días'
+  },
+  {
+    status:'amber', icon:'⚠️', vehicle:'Chevrolet Spark (DEF-456)', service:'Cambio de filtro de aire',
+    detail:'Vence en 450 km (aprox. 3 semanas)', km:'92.100 km actuales | Límite: 92.500 km',
+    taller:'AutoServicio Rápido', action:'Agendar cita', urgency:'Próximo en ~450 km'
+  },
+  {
+    status:'green', icon:'✅', vehicle:'Toyota Hilux (XYZ-789)', service:'Cambio de aceite',
+    detail:'Al día — Próximo en 45 días (25-jul-2025)', km:'41.200 km | Próximo a 46.800 km',
+    taller:'Lubricar Express', action:'Ver detalle', urgency:'Al día'
+  },
+  {
+    status:'green', icon:'✅', vehicle:'Mazda 3 (ABC-123)', service:'Rotación de llantas',
+    detail:'Al día — Próximo en 62 días (11-ago-2025)', km:'68.400 km | Próximo a 73.000 km',
+    taller:'Llantas El Centro', action:'Ver detalle', urgency:'Al día'
+  },
+  {
+    status:'green', icon:'✅', vehicle:'Chevrolet Spark (DEF-456)', service:'Revisión técnica',
+    detail:'Al día — Vence en 4 meses (oct-2025)', km:'Revisión anual', taller:'CDA Autorizado',
+    action:'Ver detalle', urgency:'Al día'
+  },
+];
+
+const badgeColors = { red:'red', amber:'amber', green:'green' };
+
+function renderAlerts(data) {
+  document.getElementById('alerts-container').innerHTML = data.map(a => `
+    <div class="alert-card ${a.status}">
+      <span style="font-size:28px;flex-shrink:0;">${a.icon}</span>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-weight:700;font-size:15px;">${a.service}</span>
+          <span class="badge ${badgeColors[a.status]}">${a.urgency}</span>
+        </div>
+        <div class="alert-meta">
+          <span>🚗 ${a.vehicle}</span>
+          <span>📅 ${a.detail}</span>
+          <span>📍 ${a.km}</span>
+          <span>🏪 ${a.taller}</span>
+        </div>
+      </div>
+      <button class="btn ${a.status==='red'?'btn-primary':'btn-ghost'} btn-sm" style="flex-shrink:0;">${a.action} →</button>
+    </div>
+  `).join('');
+}
+
+renderAlerts(alerts);
+
+function filterAlerts(status, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderAlerts(status === 'all' ? alerts : alerts.filter(a => a.status === status));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Dashboard</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div id="nav-container"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Dashboard</span>
+      <span class="topbar-subtitle">— Resumen general</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary btn-sm" onclick="location.href='mantenimientos.html'">+ Nuevo mantenimiento</button>
+      <button class="btn-icon">🔔</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon teal">🚗</div>
+        <div>
+          <div class="stat-value">3</div>
+          <div class="stat-label">Vehículos registrados</div>
+          <div class="stat-delta">↑ 1 este mes</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon navy">🔧</div>
+        <div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">Mantenimientos totales</div>
+          <div class="stat-delta">↑ 3 este trimestre</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber">⚠️</div>
+        <div>
+          <div class="stat-value">2</div>
+          <div class="stat-label">Próximos a vencer</div>
+          <div class="stat-delta" style="color:var(--amber)">Revisar esta semana</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">🚨</div>
+        <div>
+          <div class="stat-value">1</div>
+          <div class="stat-label">Mantenimiento vencido</div>
+          <div class="stat-delta" style="color:var(--red)">Acción requerida</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="grid-2">
+      <!-- Alertas activas -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔔 Alertas Activas</span>
+          <a href="alertas.html" class="btn btn-ghost btn-sm">Ver todas →</a>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:0;">
+          <div class="alert-bar red">
+            <span class="alert-icon">🚨</span>
+            <div class="alert-text">
+              <div class="alert-title">Cambio de aceite vencido</div>
+              <div class="alert-sub">Mazda 3 · Venció hace 12 días</div>
+            </div>
+            <span class="alert-action">Registrar →</span>
+          </div>
+          <div class="alert-bar amber">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-text">
+              <div class="alert-title">Revisión de frenos próxima</div>
+              <div class="alert-sub">Toyota Hilux · En 8 días</div>
+            </div>
+            <span class="alert-action">Ver →</span>
+          </div>
+          <div class="alert-bar amber">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-text">
+              <div class="alert-title">Cambio de filtro de aire</div>
+              <div class="alert-sub">Chevrolet Spark · En 450 km</div>
+            </div>
+            <span class="alert-action">Ver →</span>
+          </div>
+          <div class="alert-bar green">
+            <span class="alert-icon">✅</span>
+            <div class="alert-text">
+              <div class="alert-title">Rotación de llantas al día</div>
+              <div class="alert-sub">Toyota Hilux · Próximo en 45 días</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado de vehículos -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🚗 Estado de Flota</span>
+          <a href="vehiculos.html" class="btn btn-ghost btn-sm">Ver todos →</a>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+          <div id="fleet-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:20px;"></div>
+
+    <!-- Últimos mantenimientos -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🔧 Últimos Mantenimientos</span>
+        <a href="historial.html" class="btn btn-ghost btn-sm">Ver historial →</a>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Vehículo</th>
+                <th>Tipo de servicio</th>
+                <th>Fecha</th>
+                <th>Kilometraje</th>
+                <th>Costo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="recent-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/nav.js"></script>
+<script>
+document.getElementById('nav-container').innerHTML = SGMV.renderSidebar('dashboard');
+
+const vehicles = [
+  { name: 'Mazda 3', plate: 'ABC-123', year: 2019, km: 68400, status: 'red',   statusLabel: 'Vencido',  services: 5 },
+  { name: 'Toyota Hilux', plate: 'XYZ-789', year: 2021, km: 41200, status: 'amber', statusLabel: 'Próximo',  services: 4 },
+  { name: 'Chevrolet Spark', plate: 'DEF-456', year: 2018, km: 92100, status: 'amber', statusLabel: 'Próximo', services: 3 },
+];
+
+const recent = [
+  { car: 'Toyota Hilux', service: 'Cambio de aceite',       date: '2025-05-10', km: '40,800 km', cost: '$120.000', status: 'green' },
+  { car: 'Mazda 3',      service: 'Cambio de pastillas',    date: '2025-04-22', km: '67,200 km', cost: '$280.000', status: 'green' },
+  { car: 'Chevrolet Spark', service: 'Cambio de filtro aire', date: '2025-04-05', km: '91,500 km', cost: '$45.000', status: 'green' },
+  { car: 'Mazda 3',      service: 'Rotación de llantas',    date: '2025-03-18', km: '65,000 km', cost: '$60.000',  status: 'green' },
+];
+
+const dotColors = { red:'🔴', amber:'🟡', green:'🟢' };
+const dotClass  = { red:'red', amber:'amber', green:'green' };
+
+document.getElementById('fleet-list').innerHTML = vehicles.map(v => `
+  <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--surface-2);">
+    <div class="semaphore-wrap">
+      <div class="semaphore-light s-red   ${v.status==='red'   ?'active':''}"></div>
+      <div class="semaphore-light s-amber ${v.status==='amber' ?'active':''}"></div>
+      <div class="semaphore-light s-green ${v.status==='green' ?'active':''}"></div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:14px;">${v.name}</div>
+      <div style="font-size:12px;color:var(--text-3);">${v.plate} · ${v.year} · ${v.km.toLocaleString()} km</div>
+    </div>
+    <span class="badge ${dotClass[v.status]}">${v.statusLabel}</span>
+  </div>
+`).join('');
+
+document.getElementById('recent-table').innerHTML = recent.map(r => `
+  <tr>
+    <td><strong>${r.car}</strong></td>
+    <td>${r.service}</td>
+    <td>${r.date}</td>
+    <td style="color:var(--text-3);">${r.km}</td>
+    <td style="font-weight:600;">${r.cost}</td>
+    <td><span class="badge green">✓ Completado</span></td>
+  </tr>
+`).join('');
+</script>
+</body>
+</html>

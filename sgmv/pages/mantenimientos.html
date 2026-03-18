@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Registrar Mantenimiento</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .success-toast { position:fixed; bottom:24px; right:24px; background:var(--green); color:#fff; padding:14px 20px; border-radius:var(--radius); font-weight:600; font-size:14px; box-shadow:var(--shadow-lg); display:none; z-index:999; }
+    .success-toast.show { display:block; animation: slideIn .3s ease; }
+    @keyframes slideIn { from { transform:translateX(120%); } to { transform:translateX(0); } }
+    .section-divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
+  </style>
+</head>
+<body>
+<div id="nav-container"></div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Mantenimientos</span>
+      <span class="topbar-subtitle">— Registrar y gestionar</span>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="grid-2" style="align-items:start;">
+
+      <!-- Formulario de registro -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔧 Nuevo Mantenimiento</span>
+        </div>
+        <div class="card-body">
+          <form id="mant-form" onsubmit="saveMantenimiento(event)">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+
+              <div class="form-group">
+                <label class="form-label">Vehículo *</label>
+                <select class="form-control" id="f-vehiculo" required>
+                  <option value="">— Selecciona un vehículo —</option>
+                  <option value="Mazda 3">🚗 Mazda 3 (ABC-123)</option>
+                  <option value="Toyota Hilux">🛻 Toyota Hilux (XYZ-789)</option>
+                  <option value="Chevrolet Spark">🚗 Chevrolet Spark (DEF-456)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tipo de servicio *</label>
+                <select class="form-control" id="f-tipo" required>
+                  <option value="">— Selecciona —</option>
+                  <optgroup label="Preventivo">
+                    <option>Cambio de aceite</option>
+                    <option>Cambio de filtro de aire</option>
+                    <option>Cambio de filtro de combustible</option>
+                    <option>Rotación de llantas</option>
+                    <option>Revisión de frenos</option>
+                    <option>Cambio de correa de distribución</option>
+                    <option>Cambio de líquido de frenos</option>
+                    <option>Cambio de refrigerante</option>
+                  </optgroup>
+                  <optgroup label="Correctivo">
+                    <option>Cambio de pastillas de freno</option>
+                    <option>Cambio de amortiguadores</option>
+                    <option>Reparación de motor</option>
+                    <option>Cambio de batería</option>
+                  </optgroup>
+                  <optgroup label="Otro">
+                    <option>Revisión técnico-mecánica</option>
+                    <option>Diagnóstico general</option>
+                    <option>Otro</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Fecha de servicio *</label>
+                  <input type="date" class="form-control" id="f-fecha" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Kilometraje al momento</label>
+                  <input type="number" class="form-control" id="f-km" placeholder="68.400">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Costo (COP)</label>
+                  <input type="number" class="form-control" id="f-costo" placeholder="120.000">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Próximo servicio (km)</label>
+                  <input type="number" class="form-control" id="f-prox-km" placeholder="ej. +5000">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Próxima fecha estimada</label>
+                <input type="date" class="form-control" id="f-prox-fecha">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Nombre del taller / mecánico</label>
+                <input type="text" class="form-control" id="f-taller" placeholder="ej. Taller El Rápido">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Observaciones</label>
+                <textarea class="form-control" id="f-notas" rows="3" placeholder="Detalles adicionales del servicio..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
+                💾 Guardar mantenimiento
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Lista de mantenimientos recientes -->
+      <div>
+        <div class="section-title">📋 Últimos mantenimientos</div>
+        <div style="display:flex;flex-direction:column;gap:12px;" id="mant-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="success-toast" id="toast">✅ Mantenimiento registrado con éxito</div>
+
+<script src="../js/nav.js"></script>
+<script>
+document.getElementById('nav-container').innerHTML = SGMV.renderSidebar('mantenimientos');
+document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
+
+const mantData = [
+  { car:'Toyota Hilux', type:'Cambio de aceite',       date:'2025-05-10', km:'40.800',  cost:'$120.000', taller:'Lubricar Express',   next:'2025-11-10' },
+  { car:'Mazda 3',      type:'Cambio de pastillas',    date:'2025-04-22', km:'67.200',  cost:'$280.000', taller:'Frenos & Más',        next:'2026-04-22' },
+  { car:'Chevrolet Spark', type:'Cambio filtro aire',  date:'2025-04-05', km:'91.500',  cost:'$45.000',  taller:'AutoServicio Rápido', next:'2025-10-05' },
+  { car:'Mazda 3',      type:'Rotación de llantas',    date:'2025-03-18', km:'65.000',  cost:'$60.000',  taller:'Llantas El Centro',   next:'2025-09-18' },
+  { car:'Toyota Hilux', type:'Revisión de frenos',     date:'2025-02-28', km:'38.000',  cost:'$85.000',  taller:'Frenos & Más',        next:'2025-08-28' },
+];
+
+function renderList(data) {
+  document.getElementById('mant-list').innerHTML = data.map(m => `
+    <div class="card" style="padding:0;">
+      <div style="padding:14px 18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-weight:700;font-size:14px;">🔧 ${m.type}</div>
+          <span class="badge green">Completado</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:12px;">
+          <span>🚗 ${m.car}</span>
+          <span>📅 ${m.date}</span>
+          <span>📍 ${m.km} km</span>
+          <span>💰 ${m.cost}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:6px;">🏪 ${m.taller} · Próximo: ${m.next}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+renderList(mantData);
+
+function saveMantenimiento(e) {
+  e.preventDefault();
+  const newItem = {
+    car:    document.getElementById('f-vehiculo').value,
+    type:   document.getElementById('f-tipo').value,
+    date:   document.getElementById('f-fecha').value,
+    km:     document.getElementById('f-km').value ? parseInt(document.getElementById('f-km').value).toLocaleString() : '—',
+    cost:   document.getElementById('f-costo').value ? '$' + parseInt(document.getElementById('f-costo').value).toLocaleString() : '—',
+    taller: document.getElementById('f-taller').value || 'Sin especificar',
+    next:   document.getElementById('f-prox-fecha').value || '—'
+  };
+  mantData.unshift(newItem);
+  renderList(mantData);
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+  e.target.reset();
+  document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
+}
+</script>
+</body>
+</html>
