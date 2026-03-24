@@ -183,6 +183,33 @@ login.html
 
 ---
 
+
+## 📐 Modelo Entidad Relacion- MER
+Modelo Entidad - Relación (MER)
+
+El sistema SGMV se diseñó con cinco entidades principales: Usuarios, Vehículos, Mantenimientos, Tipos de Mantenimiento y Alertas. Estas entidades permiten gestionar el control del mantenimiento vehicular y el historial de servicios.
+
+Un usuario puede registrar uno o varios vehículos. Cada vehículo pertenece a un único usuario.
+Cada vehículo puede tener múltiples mantenimientos asociados, los cuales registran los servicios realizados.
+Los mantenimientos están clasificados por tipos de mantenimiento como cambio de aceite, frenos, llantas, entre otros.
+Además, cada vehículo puede generar alertas para recordar futuros mantenimientos.
+
+Relaciones del sistema:
+
+Usuarios 1:N Vehículos
+Vehículos 1:N Mantenimientos
+Tipos_Mantenimiento 1:N Mantenimientos
+Vehículos 1:N Alertas
+
+Esto permite mantener la integridad de los datos y consultar el historial de mantenimiento de cada vehículo.
+
+
+![image alt](https://github.com/AlexLR2/Proyecto-Ingenier-a-SFTW/blob/730982ab0e63d8bb01b8b184a313baf4ae4025bc/BaseDeDatos%2CMER%2CDiccionarioDatos/modelo_entidad_relacion_sgmv.png)
+
+## 📐 Diccionario De Datos
+
+![Texto alternativo](https://github.com/AlexLR2/Proyecto-Ingenier-a-SFTW/blob/730982ab0e63d8bb01b8b184a313baf4ae4025bc/BaseDeDatos%2CMER%2CDiccionarioDatos/Diccionario_Datos_SGMV_page-0001.jpg)
+
 ## 📄 Licencia
 
 Proyecto académico — Ingeniería de Software · 2025.
