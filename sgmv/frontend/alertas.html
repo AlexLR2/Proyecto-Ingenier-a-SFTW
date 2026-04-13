@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Alertas</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .alert-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:flex-start;gap:14px;box-shadow:var(--shadow-sm);transition:.18s}
+    .alert-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+    .alert-card.rojo{border-left:4px solid var(--red)}
+    .alert-card.amarillo{border-left:4px solid var(--amber)}
+    .alert-card.verde,.alert-card.atendida{border-left:4px solid var(--green)}
+    .filter-tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+    .tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--text-2);background:var(--white);transition:.15s}
+    .tab.active{background:var(--navy);color:var(--white);border-color:var(--navy)}
+  </style>
+</head>
+<body>
+<div id="nav-container"></div>
+<div class="main">
+  <div class="topbar">
+    <div><span class="topbar-title">Alertas</span><span class="topbar-subtitle">— Sistema semáforo preventivo</span></div>
+    <div class="topbar-actions">
+      <span class="api-status"><span class="api-dot" id="api-status-dot"></span><span id="api-status-label">BD</span></span>
+      <button class="btn btn-primary" onclick="openModal('modal-add')">+ Nueva alerta</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="stat-grid">
+      <div class="stat-card" style="border-left:3px solid var(--red)"><div class="stat-icon red">🔴</div><div><div class="stat-value" id="s-rojo" style="color:var(--red)">—</div><div class="stat-label">Vencidas</div></div></div>
+      <div class="stat-card" style="border-left:3px solid var(--amber)"><div class="stat-icon amber">🟡</div><div><div class="stat-value" id="s-amarillo" style="color:var(--amber)">—</div><div class="stat-label">Próximas</div></div></div>
+      <div class="stat-card" style="border-left:3px solid var(--green)"><div class="stat-icon teal">🟢</div><div><div class="stat-value" id="s-verde" style="color:var(--green)">—</div><div class="stat-label">Al día</div></div></div>
+      <div class="stat-card"><div class="stat-icon navy">✅</div><div><div class="stat-value" id="s-atendida">—</div><div class="stat-label">Atendidas</div></div></div>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="tab active" onclick="filtrar('todas',this)">Todas</button>
+      <button class="tab" onclick="filtrar('pendiente',this)">🔴🟡 Pendientes</button>
+      <button class="tab" onclick="filtrar('atendida',this)">✅ Atendidas</button>
+    </div>
+
+    <div id="alertas-container" style="display:flex;flex-direction:column;gap:12px">
+      <div style="color:var(--text-3);font-size:13px">Cargando alertas...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal AGREGAR alerta -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🔔 Nueva Alerta</span>
+      <span class="modal-close" onclick="closeModal('modal-add')">✕</span>
+    </div>
+    <form id="form-add" onsubmit="submitAdd(event)">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group"><label class="form-label">Vehículo *</label><select class="form-control" id="a-vehiculo" required><option value="">— Selecciona —</option></select></div>
+        <div class="form-group"><label class="form-label">Mensaje *</label><input class="form-control" id="a-mensaje" placeholder="Ej: Cambio de aceite próximo" required></div>
+        <div class="form-group"><label class="form-label">Fecha límite *</label><input type="date" class="form-control" id="a-fecha" required></div>
+        <div class="form-group"><label class="form-label">Estado</label>
+          <select class="form-control" id="a-estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="atendida">Atendida</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar en BD</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal EDITAR alerta -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar Alerta</span>
+      <span class="modal-close" onclick="closeModal('modal-edit')">✕</span>
+    </div>
+    <form id="form-edit" onsubmit="submitEdit(event)">
+      <input type="hidden" id="e-id">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group"><label class="form-label">Mensaje</label><input class="form-control" id="e-mensaje"></div>
+        <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-control" id="e-fecha"></div>
+        <div class="form-group"><label class="form-label">Estado</label>
+          <select class="form-control" id="e-estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="atendida">Atendida</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Actualizar en BD</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const user = Session.require(); if (!user) throw '';
+NAV.render('alertas'); checkApiStatus();
+
+let allAlertas = [];
+
+async function load() {
+  try {
+    const [alertas, vehiculos] = await Promise.all([API.getAlertas(), API.getVehiculos()]);
+    allAlertas = alertas.map(a => ({
+      ...a,
+      _semaforo: a.estado === 'atendida' ? 'atendida' : alertStatus(a.fecha)
+    }));
+
+    // Stats
+    document.getElementById('s-rojo').textContent    = allAlertas.filter(a=>a._semaforo==='red').length;
+    document.getElementById('s-amarillo').textContent= allAlertas.filter(a=>a._semaforo==='amber').length;
+    document.getElementById('s-verde').textContent   = allAlertas.filter(a=>a._semaforo==='green').length;
+    document.getElementById('s-atendida').textContent= allAlertas.filter(a=>a._semaforo==='atendida').length;
+
+    // Populate vehiculo select
+    const vOpts = vehiculos.map(v=>`<option value="${v.id_vehiculo}">${v.marca} ${v.modelo} (${v.placa})</option>`).join('');
+    document.getElementById('a-vehiculo').innerHTML = '<option value="">— Selecciona —</option>' + vOpts;
+
+    renderAlertas(allAlertas);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+const semIcons = {red:'🚨', amber:'⚠️', green:'✅', atendida:'✅'};
+const semLabels = {red:'Vencida', amber:'Próxima (≤15d)', green:'Al día', atendida:'Atendida'};
+const semBadge  = {red:'red', amber:'amber', green:'green', atendida:'green'};
+const cardClass = {red:'rojo', amber:'amarillo', green:'verde', atendida:'atendida'};
+
+function renderAlertas(list) {
+  document.getElementById('alertas-container').innerHTML = list.length
+    ? list.map(a => `
+      <div class="alert-card ${cardClass[a._semaforo]}">
+        <span style="font-size:26px;flex-shrink:0">${semIcons[a._semaforo]}</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="font-weight:700;font-size:15px">${a.mensaje}</span>
+            <span class="badge ${semBadge[a._semaforo]}">${semLabels[a._semaforo]}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:12px">
+            <span>🚗 ${a.marca} ${a.modelo} (${a.placa})</span>
+            <span>📅 ${fmt.date(a.fecha)}</span>
+            <span style="text-transform:capitalize">📌 ${a.estado}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${a.estado==='pendiente' ? `<button class="btn btn-primary btn-sm" onclick="marcarAtendida(${a.id_alerta})">✓ Atender</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(a)})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAlerta(${a.id_alerta})">🗑</button>
+        </div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">🔔</div><div class="empty-title">Sin alertas</div></div>`;
+}
+
+function filtrar(f, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  if (f === 'todas') renderAlertas(allAlertas);
+  else if (f === 'pendiente') renderAlertas(allAlertas.filter(a=>a.estado==='pendiente'));
+  else renderAlertas(allAlertas.filter(a=>a.estado==='atendida'));
+}
+
+async function submitAdd(e) {
+  e.preventDefault();
+  try {
+    await API.createAlerta({
+      id_vehiculo: parseInt(document.getElementById('a-vehiculo').value),
+      mensaje:     document.getElementById('a-mensaje').value,
+      fecha:       document.getElementById('a-fecha').value,
+      estado:      document.getElementById('a-estado').value,
+    });
+    toast('Alerta creada en la BD ✓');
+    closeModal('modal-add');
+    document.getElementById('form-add').reset();
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+function openEdit(a) {
+  document.getElementById('e-id').value = a.id_alerta;
+  document.getElementById('e-mensaje').value = a.mensaje;
+  document.getElementById('e-fecha').value = a.fecha;
+  document.getElementById('e-estado').value = a.estado;
+  openModal('modal-edit');
+}
+
+async function submitEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('e-id').value;
+  try {
+    await API.updateAlerta(id, {
+      mensaje: document.getElementById('e-mensaje').value,
+      fecha:   document.getElementById('e-fecha').value,
+      estado:  document.getElementById('e-estado').value,
+    });
+    toast('Alerta actualizada en la BD ✓');
+    closeModal('modal-edit');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+async function marcarAtendida(id) {
+  const a = allAlertas.find(x=>x.id_alerta===id);
+  try {
+    await API.updateAlerta(id, { estado:'atendida', mensaje:a.mensaje, fecha:a.fecha });
+    toast('Alerta marcada como atendida en la BD ✓');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+async function deleteAlerta(id) {
+  if (!confirm('¿Eliminar esta alerta de la BD?')) return;
+  try {
+    await API.deleteAlerta(id);
+    toast('Alerta eliminada de la BD ✓');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+load();
+</script>
+</body>
+</html>

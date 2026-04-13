@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Mis Vehículos</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="nav-container"></div>
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Mis Vehículos</span>
+      <span class="topbar-subtitle">— Gestión de flota</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="api-status"><span class="api-dot" id="api-status-dot"></span><span id="api-status-label">BD</span></span>
+      <button class="btn btn-primary" onclick="openModal('modal-add')">+ Agregar vehículo</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-header" style="margin-bottom:8px">
+      <div><div class="page-title">Flota vehicular</div><div class="page-subtitle" id="subtitle">Cargando...</div></div>
+      <input type="text" class="form-control" placeholder="🔍  Buscar..." style="width:220px" oninput="filterCards(this.value)">
+    </div>
+    <div style="height:20px"></div>
+    <div class="vehicle-grid" id="vehicle-grid">
+      <div style="color:var(--text-3);padding:40px">Cargando vehículos...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal AGREGAR -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🚗 Agregar vehículo</span>
+      <span class="modal-close" onclick="closeModal('modal-add')">✕</span>
+    </div>
+    <form id="form-add" onsubmit="submitAdd(event)">
+      <div class="form-grid" style="gap:16px;margin-bottom:16px">
+        <div class="form-group"><label class="form-label">Placa *</label><input class="form-control" id="a-placa" placeholder="ABC123" required></div>
+        <div class="form-group"><label class="form-label">Marca *</label><input class="form-control" id="a-marca" placeholder="Toyota" required></div>
+        <div class="form-group"><label class="form-label">Modelo *</label><input class="form-control" id="a-modelo" placeholder="Corolla" required></div>
+        <div class="form-group"><label class="form-label">Año *</label><input class="form-control" id="a-anio" type="number" placeholder="2022" min="1990" max="2026" required></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Propietario *</label>
+          <select class="form-control" id="a-usuario" required><option value="">— Selecciona —</option></select></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-add">Guardar vehículo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal EDITAR -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar vehículo</span>
+      <span class="modal-close" onclick="closeModal('modal-edit')">✕</span>
+    </div>
+    <form id="form-edit" onsubmit="submitEdit(event)">
+      <input type="hidden" id="e-id">
+      <div class="form-grid" style="gap:16px;margin-bottom:16px">
+        <div class="form-group"><label class="form-label">Placa *</label><input class="form-control" id="e-placa" required></div>
+        <div class="form-group"><label class="form-label">Marca *</label><input class="form-control" id="e-marca" required></div>
+        <div class="form-group"><label class="form-label">Modelo *</label><input class="form-control" id="e-modelo" required></div>
+        <div class="form-group"><label class="form-label">Año *</label><input class="form-control" id="e-anio" type="number" required></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Propietario</label>
+          <select class="form-control" id="e-usuario"></select></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Actualizar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const user = Session.require(); if (!user) throw '';
+NAV.render('vehiculos'); checkApiStatus();
+
+let allVehiculos = [], allUsuarios = [];
+
+async function load() {
+  try {
+    [allVehiculos, allUsuarios] = await Promise.all([API.getVehiculos(), API.getUsuarios()]);
+    document.getElementById('subtitle').textContent = `${allVehiculos.length} vehículo(s) registrado(s)`;
+    renderCards(allVehiculos);
+    // Populate selects
+    const opts = allUsuarios.map(u => `<option value="${u.id_usuario}">${u.nombre}</option>`).join('');
+    document.getElementById('a-usuario').innerHTML = '<option value="">— Selecciona —</option>' + opts;
+    document.getElementById('e-usuario').innerHTML = opts;
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+const brandIcons = { toyota:'🚗', chevrolet:'🚙', mazda:'🚗', renault:'🚐', kia:'🚗', honda:'🚗', ford:'🛻', nissan:'🚗' };
+const getIcon = marca => brandIcons[marca.toLowerCase()] || '🚗';
+
+function renderCards(list) {
+  const grid = document.getElementById('vehicle-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🚗</div><div class="empty-title">Sin vehículos</div><div class="empty-sub">Agrega tu primer vehículo</div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(v => `
+    <div class="vehicle-card">
+      <div class="vehicle-card-header">
+        <div class="vehicle-icon">${getIcon(v.marca)}</div>
+        <div style="flex:1">
+          <div class="vehicle-name">${v.marca} ${v.modelo}</div>
+          <div class="vehicle-plate">${v.placa} · ${v.anio}</div>
+        </div>
+        <div class="semaphore-wrap" style="flex-shrink:0">
+          <div class="semaphore-light s-red"></div>
+          <div class="semaphore-light s-amber active"></div>
+          <div class="semaphore-light s-green"></div>
+        </div>
+      </div>
+      <div class="vehicle-card-body">
+        <div class="vehicle-meta">
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Placa</span><span class="vehicle-meta-val">${v.placa}</span></div>
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Año</span><span class="vehicle-meta-val">${v.anio}</span></div>
+          <div class="vehicle-meta-row"><span class="vehicle-meta-key">Propietario</span><span class="vehicle-meta-val">${v.propietario || '—'}</span></div>
+        </div>
+      </div>
+      <div class="vehicle-card-footer">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="location.href='historial.html?vehiculo=${v.id_vehiculo}'">📋 Historial</button>
+        <button class="btn btn-ghost btn-sm" onclick="editVehiculo(${v.id_vehiculo})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVehiculo(${v.id_vehiculo},'${v.marca} ${v.modelo}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterCards(q) {
+  const f = q.toLowerCase();
+  renderCards(allVehiculos.filter(v => `${v.marca} ${v.modelo} ${v.placa} ${v.propietario}`.toLowerCase().includes(f)));
+}
+
+async function submitAdd(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-add');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try {
+    await API.createVehiculo({
+      placa: document.getElementById('a-placa').value.toUpperCase(),
+      marca: document.getElementById('a-marca').value,
+      modelo: document.getElementById('a-modelo').value,
+      anio: parseInt(document.getElementById('a-anio').value),
+      id_usuario: parseInt(document.getElementById('a-usuario').value),
+    });
+    toast('Vehículo registrado en la BD ✓');
+    closeModal('modal-add');
+    document.getElementById('form-add').reset();
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+  btn.textContent = 'Guardar vehículo'; btn.disabled = false;
+}
+
+function editVehiculo(id) {
+  const v = allVehiculos.find(x => x.id_vehiculo === id);
+  if (!v) return;
+  document.getElementById('e-id').value = id;
+  document.getElementById('e-placa').value = v.placa;
+  document.getElementById('e-marca').value = v.marca;
+  document.getElementById('e-modelo').value = v.modelo;
+  document.getElementById('e-anio').value = v.anio;
+  document.getElementById('e-usuario').value = v.id_usuario;
+  openModal('modal-edit');
+}
+
+async function submitEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('e-id').value;
+  try {
+    await API.updateVehiculo(id, {
+      placa: document.getElementById('e-placa').value.toUpperCase(),
+      marca: document.getElementById('e-marca').value,
+      modelo: document.getElementById('e-modelo').value,
+      anio: parseInt(document.getElementById('e-anio').value),
+      id_usuario: parseInt(document.getElementById('e-usuario').value),
+    });
+    toast('Vehículo actualizado en la BD ✓');
+    closeModal('modal-edit');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+async function deleteVehiculo(id, nombre) {
+  if (!confirm(`¿Eliminar "${nombre}" y todos sus mantenimientos de la BD?`)) return;
+  try {
+    await API.deleteVehiculo(id);
+    toast('Vehículo eliminado de la BD ✓');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+load();
+</script>
+</body>
+</html>

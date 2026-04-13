@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Iniciar Sesión</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body{display:block}
+    .login-page{display:flex}
+    .orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+    .orb-1{width:350px;height:350px;background:rgba(0,191,166,.12);top:-80px;right:-60px}
+    .orb-2{width:250px;height:250px;background:rgba(0,191,166,.08);bottom:40px;left:20px}
+    .user-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+    .user-chip{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;transition:.15s;display:flex;justify-content:space-between}
+    .user-chip:hover{background:rgba(0,191,166,.08);border-color:var(--teal)}
+    .user-chip strong{color:var(--text-1)}
+    .user-chip span{color:var(--text-3)}
+  </style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🚗</div>
+      <div>
+        <div class="login-logo-text">SGMV</div>
+        <div class="login-logo-sub">Sistema de Gestión de Mantenimiento Vehicular</div>
+      </div>
+    </div>
+
+    <h1 class="login-title">Bienvenido</h1>
+    <p class="login-sub">Ingresa tus credenciales para acceder</p>
+
+    <div class="demo-hint">
+      🔑 Usuarios de prueba — haz clic para seleccionar:
+      <div class="user-list" style="margin-top:8px;" id="user-list">
+        <div class="user-chip" onclick="fillUser('carlos@mail.com')"><strong>Carlos Perez</strong><span>carlos@mail.com</span></div>
+        <div class="user-chip" onclick="fillUser('ana@mail.com')"><strong>Ana Torres</strong><span>ana@mail.com</span></div>
+        <div class="user-chip" onclick="fillUser('luis@mail.com')"><strong>Luis Gomez</strong><span>luis@mail.com</span></div>
+        <div class="user-chip" onclick="fillUser('maria@mail.com')"><strong>Maria Lopez</strong><span>maria@mail.com</span></div>
+      </div>
+    </div>
+
+    <form class="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-wrap">
+          <span class="input-icon">📧</span>
+          <input type="email" class="form-control with-icon" id="email" placeholder="tu@email.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" class="form-control with-icon" id="password" placeholder="••••••••" value="1234" required>
+        </div>
+      </div>
+      <div id="error-msg" style="display:none;background:rgba(239,83,80,.1);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);"></div>
+      <button type="submit" class="btn btn-primary btn-lg w-full" id="btn-login" style="justify-content:center;margin-top:4px;">
+        Iniciar sesión →
+      </button>
+    </form>
+
+    <div style="margin-top:16px;text-align:center;">
+      <span class="api-status">
+        <span class="api-dot" id="api-status-dot"></span>
+        <span id="api-status-label">Verificando BD...</span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+// Redirect if already logged in
+if (Session.get()) window.location.href = 'dashboard.html';
+
+checkApiStatus();
+
+function fillUser(email) {
+  document.getElementById('email').value = email;
+  document.getElementById('password').value = '1234';
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-login');
+  const err = document.getElementById('error-msg');
+  btn.textContent = 'Verificando...';
+  btn.disabled = true;
+  err.style.display = 'none';
+  try {
+    const res = await API.login({
+      email:    document.getElementById('email').value,
+      password: document.getElementById('password').value,
+    });
+    if (res.ok) {
+      Session.set(res.usuario);
+      window.location.href = 'dashboard.html';
+    }
+  } catch (ex) {
+    err.style.display = 'block';
+    err.textContent = '❌ ' + (ex.message || 'Credenciales incorrectas');
+    btn.textContent = 'Iniciar sesión →';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

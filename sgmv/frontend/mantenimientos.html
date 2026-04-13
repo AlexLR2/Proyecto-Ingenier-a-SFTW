@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Mantenimientos</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="nav-container"></div>
+<div class="main">
+  <div class="topbar">
+    <div><span class="topbar-title">Mantenimientos</span><span class="topbar-subtitle">— Registrar y gestionar</span></div>
+    <div class="topbar-actions">
+      <span class="api-status"><span class="api-dot" id="api-status-dot"></span><span id="api-status-label">BD</span></span>
+      <button class="btn btn-primary" onclick="openModal('modal-add')">+ Registrar servicio</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="grid-2" style="align-items:start">
+
+      <!-- Formulario rápido -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔧 Nuevo Mantenimiento</span></div>
+        <div class="card-body">
+          <form id="form-quick" onsubmit="submitQuick(event)">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="form-group">
+                <label class="form-label">Vehículo *</label>
+                <select class="form-control" id="q-vehiculo" required>
+                  <option value="">— Selecciona —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de servicio *</label>
+                <select class="form-control" id="q-tipo" required>
+                  <option value="">— Selecciona —</option>
+                </select>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-control" id="q-fecha" required></div>
+                <div class="form-group"><label class="form-label">Kilometraje</label><input type="number" class="form-control" id="q-km" placeholder="50000"></div>
+                <div class="form-group"><label class="form-label">Costo (COP)</label><input type="number" class="form-control" id="q-costo" placeholder="120000"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" id="q-desc" rows="2" placeholder="Detalles del servicio..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center" id="btn-quick">
+                💾 Guardar en BD
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Lista reciente -->
+      <div>
+        <div class="section-title">📋 Registros recientes</div>
+        <div id="recent-list" style="display:flex;flex-direction:column;gap:10px">
+          <div style="color:var(--text-3);font-size:13px">Cargando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal EDITAR mantenimiento -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar mantenimiento</span>
+      <span class="modal-close" onclick="closeModal('modal-edit')">✕</span>
+    </div>
+    <form id="form-edit" onsubmit="submitEdit(event)">
+      <input type="hidden" id="e-id">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group"><label class="form-label">Vehículo</label><select class="form-control" id="e-vehiculo"></select></div>
+        <div class="form-group"><label class="form-label">Tipo de servicio</label><select class="form-control" id="e-tipo"></select></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-control" id="e-fecha"></div>
+          <div class="form-group"><label class="form-label">Kilometraje</label><input type="number" class="form-control" id="e-km"></div>
+          <div class="form-group"><label class="form-label">Costo</label><input type="number" class="form-control" id="e-costo"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-control" id="e-desc" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Actualizar en BD</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const user = Session.require(); if (!user) throw '';
+NAV.render('mantenimientos'); checkApiStatus();
+document.getElementById('q-fecha').value = new Date().toISOString().split('T')[0];
+
+let allMants = [], allVehiculos = [], allTipos = [];
+
+async function load() {
+  try {
+    [allMants, allVehiculos, allTipos] = await Promise.all([
+      API.getMantenimientos(), API.getVehiculos(), API.getTipos()
+    ]);
+
+    // Populate selects
+    const vOpts = allVehiculos.map(v => `<option value="${v.id_vehiculo}">${v.marca} ${v.modelo} (${v.placa})</option>`).join('');
+    const tOpts = allTipos.map(t => `<option value="${t.id_tipo}">${t.nombre}</option>`).join('');
+    ['q-vehiculo','e-vehiculo'].forEach(id => { document.getElementById(id).innerHTML = '<option value="">— Selecciona —</option>' + vOpts; });
+    ['q-tipo','e-tipo'].forEach(id => { document.getElementById(id).innerHTML = '<option value="">— Selecciona —</option>' + tOpts; });
+
+    renderRecent(allMants.slice(0,8));
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+function renderRecent(list) {
+  document.getElementById('recent-list').innerHTML = list.length
+    ? list.map(m => `
+      <div class="card" style="padding:0">
+        <div style="padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-weight:700;font-size:14px">🔧 ${m.tipo_nombre}</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(m)})'>✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteMant(${m.id_mantenimiento})">🗑</button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:10px">
+            <span>🚗 ${m.marca} ${m.modelo} (${m.placa})</span>
+            <span>📅 ${fmt.date(m.fecha)}</span>
+            <span>📍 ${fmt.km(m.kilometraje)}</span>
+            <span>💰 ${fmt.money(m.costo)}</span>
+          </div>
+          ${m.descripcion ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">📝 ${m.descripcion}</div>` : ''}
+        </div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">Sin mantenimientos</div></div>`;
+}
+
+async function submitQuick(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-quick');
+  btn.textContent = 'Guardando en BD...'; btn.disabled = true;
+  try {
+    await API.createMant({
+      id_vehiculo: parseInt(document.getElementById('q-vehiculo').value),
+      id_tipo:     parseInt(document.getElementById('q-tipo').value),
+      fecha:       document.getElementById('q-fecha').value,
+      kilometraje: parseInt(document.getElementById('q-km').value)||null,
+      costo:       parseFloat(document.getElementById('q-costo').value)||null,
+      descripcion: document.getElementById('q-desc').value,
+    });
+    toast('Mantenimiento guardado en la BD ✓');
+    document.getElementById('form-quick').reset();
+    document.getElementById('q-fecha').value = new Date().toISOString().split('T')[0];
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+  btn.textContent = '💾 Guardar en BD'; btn.disabled = false;
+}
+
+function openEdit(m) {
+  document.getElementById('e-id').value = m.id_mantenimiento;
+  document.getElementById('e-vehiculo').value = m.id_vehiculo;
+  document.getElementById('e-tipo').value = m.id_tipo;
+  document.getElementById('e-fecha').value = m.fecha;
+  document.getElementById('e-km').value = m.kilometraje;
+  document.getElementById('e-costo').value = m.costo;
+  document.getElementById('e-desc').value = m.descripcion || '';
+  openModal('modal-edit');
+}
+
+async function submitEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('e-id').value;
+  try {
+    await API.updateMant(id, {
+      id_vehiculo: parseInt(document.getElementById('e-vehiculo').value),
+      id_tipo:     parseInt(document.getElementById('e-tipo').value),
+      fecha:       document.getElementById('e-fecha').value,
+      kilometraje: parseInt(document.getElementById('e-km').value)||null,
+      costo:       parseFloat(document.getElementById('e-costo').value)||null,
+      descripcion: document.getElementById('e-desc').value,
+    });
+    toast('Mantenimiento actualizado en la BD ✓');
+    closeModal('modal-edit');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+async function deleteMant(id) {
+  if (!confirm('¿Eliminar este mantenimiento de la BD?')) return;
+  try {
+    await API.deleteMant(id);
+    toast('Mantenimiento eliminado ✓');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+load();
+</script>
+</body>
+</html>

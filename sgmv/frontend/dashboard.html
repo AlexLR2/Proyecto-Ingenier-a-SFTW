@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="nav-container"></div>
+<div class="main">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Dashboard</span>
+      <span class="topbar-subtitle" id="topbar-sub">— Cargando...</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="api-status"><span class="api-dot" id="api-status-dot"></span><span id="api-status-label">BD</span></span>
+      <button class="btn btn-primary btn-sm" onclick="location.href='mantenimientos.html'">+ Nuevo mantenimiento</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Stats -->
+    <div class="stat-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-icon teal">🚗</div><div><div class="stat-value" id="s-vehiculos">…</div><div class="stat-label">Vehículos</div></div></div>
+      <div class="stat-card"><div class="stat-icon navy">🔧</div><div><div class="stat-value" id="s-mant">…</div><div class="stat-label">Mantenimientos</div></div></div>
+      <div class="stat-card"><div class="stat-icon amber">🔔</div><div><div class="stat-value" id="s-alertas">…</div><div class="stat-label">Alertas pendientes</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">💰</div><div><div class="stat-value" id="s-gasto" style="font-size:18px">…</div><div class="stat-label">Gasto total</div></div></div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Alertas activas -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔔 Alertas Pendientes</span>
+          <a href="alertas.html" class="btn btn-ghost btn-sm">Ver todas →</a>
+        </div>
+        <div class="card-body" id="alertas-list" style="display:flex;flex-direction:column;gap:0;">
+          <div style="color:var(--text-3);font-size:13px;padding:10px 0;">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Estado flota -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🚗 Mi Flota</span>
+          <a href="vehiculos.html" class="btn btn-ghost btn-sm">Ver todos →</a>
+        </div>
+        <div class="card-body" id="flota-list" style="display:flex;flex-direction:column;gap:0;">
+          <div style="color:var(--text-3);font-size:13px;padding:10px 0;">Cargando...</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:20px"></div>
+
+    <!-- Últimos mantenimientos -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🔧 Últimos Mantenimientos</span>
+        <a href="historial.html" class="btn btn-ghost btn-sm">Ver historial →</a>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Vehículo</th><th>Tipo</th><th>Fecha</th><th>Kilometraje</th><th>Costo</th></tr></thead>
+            <tbody id="mant-table"><tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const user = Session.require();
+if (!user) throw '';
+NAV.render('dashboard');
+checkApiStatus();
+document.getElementById('topbar-sub').textContent = `— Bienvenido, ${user.nombre.split(' ')[0]}`;
+
+async function loadDashboard() {
+  try {
+    const d = await API.getDashboard();
+
+    document.getElementById('s-vehiculos').textContent = d.total_vehiculos;
+    document.getElementById('s-mant').textContent = d.total_mantenimientos;
+    document.getElementById('s-alertas').textContent = d.alertas_pendientes;
+    document.getElementById('s-gasto').textContent = fmt.money(d.gasto_total);
+
+    // Alertas
+    document.getElementById('alertas-list').innerHTML = d.alertas_activas.length
+      ? d.alertas_activas.map(a => {
+          const st = alertStatus(a.fecha);
+          const icons = {red:'🚨',amber:'⚠️',green:'✅'};
+          return `<div class="alert-bar ${st}">
+            <span class="alert-icon">${icons[st]}</span>
+            <div class="alert-text">
+              <div class="alert-title">${a.mensaje}</div>
+              <div class="alert-sub">${a.marca} ${a.modelo} (${a.placa}) · ${fmt.date(a.fecha)}</div>
+            </div>
+            <button onclick="marcarLeida(${a.id_alerta},this)" class="btn btn-ghost btn-sm">✓ Listo</button>
+          </div>`;
+        }).join('')
+      : `<div class="alert-bar green"><span class="alert-icon">✅</span>
+         <div class="alert-text"><div class="alert-title">Todo al día</div></div></div>`;
+
+    // Flota
+    const vehiculos = await API.getVehiculos(user.id_usuario);
+    document.getElementById('flota-list').innerHTML = vehiculos.length
+      ? vehiculos.map(v => {
+          // Determine status from alertas
+          const alerta = d.alertas_activas.find(a => a.id_vehiculo === v.id_vehiculo);
+          const st = alerta ? alertStatus(alerta.fecha) : 'green';
+          const labels = {red:'Vencido',amber:'Próximo',green:'Al día'};
+          return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--surface-2)">
+            ${semaphoreHTML(st)}
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:14px">${v.marca} ${v.modelo}</div>
+              <div style="font-size:12px;color:var(--text-3)">${v.placa} · ${v.anio}</div>
+            </div>
+            <span class="badge ${st}">${labels[st]}</span>
+          </div>`;
+        }).join('')
+      : `<div style="color:var(--text-3);font-size:13px;padding:10px 0">Sin vehículos registrados</div>`;
+
+    // Últimos mantenimientos
+    document.getElementById('mant-table').innerHTML = d.ultimos_mantenimientos.length
+      ? d.ultimos_mantenimientos.map(m => `
+        <tr>
+          <td><strong>${m.marca} ${m.modelo}</strong> <span style="color:var(--text-3);font-size:12px">${m.placa}</span></td>
+          <td>${m.tipo}</td>
+          <td>${fmt.date(m.fecha)}</td>
+          <td style="color:var(--text-2)">${m.kilometraje ? fmt.km(m.kilometraje) : '—'}</td>
+          <td style="font-weight:600">${fmt.money(m.costo)}</td>
+        </tr>`).join('')
+      : `<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px">Sin mantenimientos</td></tr>`;
+
+  } catch(e) {
+    toast('Error cargando datos: ' + e.message, 'error');
+  }
+}
+
+async function marcarLeida(id, btn) {
+  try {
+    await API.updateAlerta(id, { estado: 'atendida', mensaje: btn.closest('.alert-bar').querySelector('.alert-title').textContent, fecha: '' });
+    toast('Alerta marcada como atendida');
+    loadDashboard();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

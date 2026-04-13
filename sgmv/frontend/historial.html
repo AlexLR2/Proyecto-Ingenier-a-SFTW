@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGMV — Historial</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="nav-container"></div>
+<div class="main">
+  <div class="topbar">
+    <div><span class="topbar-title">Historial</span><span class="topbar-subtitle">— Registro completo de mantenimientos</span></div>
+    <div class="topbar-actions">
+      <span class="api-status"><span class="api-dot" id="api-status-dot"></span><span id="api-status-label">BD</span></span>
+      <button class="btn btn-primary btn-sm" onclick="location.href='mantenimientos.html'">+ Nuevo</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Resumen -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px">
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--navy)" id="r-total">—</div>
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Total servicios</div>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px">
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--navy)" id="r-gasto">—</div>
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Gasto total</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+      <div class="form-group" style="flex:1;min-width:160px">
+        <label class="form-label">Vehículo</label>
+        <select class="form-control" id="f-vehiculo" onchange="applyFilters()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;min-width:160px">
+        <label class="form-label">Tipo de servicio</label>
+        <select class="form-control" id="f-tipo" onchange="applyFilters()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="form-group" style="min-width:130px">
+        <label class="form-label">Desde</label>
+        <input type="date" class="form-control" id="f-from" onchange="applyFilters()">
+      </div>
+      <div class="form-group" style="min-width:130px">
+        <label class="form-label">Hasta</label>
+        <input type="date" class="form-control" id="f-to" onchange="applyFilters()">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Limpiar</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Registros de mantenimiento</span>
+        <span id="count-label" style="font-size:13px;color:var(--text-3)">— registros</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Vehículo</th><th>Tipo de servicio</th>
+                <th>Fecha</th><th>Kilometraje</th><th>Costo</th><th>Descripción</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="hist-body">
+              <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-3)">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+const user = Session.require(); if (!user) throw '';
+NAV.render('historial'); checkApiStatus();
+
+// Set default date range
+const today = new Date().toISOString().split('T')[0];
+const yearStart = new Date().getFullYear() + '-01-01';
+document.getElementById('f-from').value = '2026-01-01';
+document.getElementById('f-to').value = today;
+
+let allData = [];
+
+async function load() {
+  try {
+    const [mants, vehiculos, tipos] = await Promise.all([
+      API.getMantenimientos(), API.getVehiculos(), API.getTipos()
+    ]);
+    allData = mants;
+
+    // Resumen
+    const total = mants.reduce((s,m) => s + (parseFloat(m.costo)||0), 0);
+    document.getElementById('r-total').textContent = mants.length;
+    document.getElementById('r-gasto').textContent = fmt.money(total);
+
+    // Populate filter selects
+    const vOpts = vehiculos.map(v=>`<option value="${v.id_vehiculo}">${v.marca} ${v.modelo} (${v.placa})</option>`).join('');
+    const tOpts = tipos.map(t=>`<option value="${t.id_tipo}">${t.nombre}</option>`).join('');
+    document.getElementById('f-vehiculo').innerHTML = '<option value="">Todos</option>' + vOpts;
+    document.getElementById('f-tipo').innerHTML     = '<option value="">Todos</option>' + tOpts;
+
+    renderTable(allData);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+function renderTable(data) {
+  document.getElementById('count-label').textContent = `${data.length} registro(s)`;
+  document.getElementById('hist-body').innerHTML = data.length
+    ? data.map((r,i) => `
+      <tr>
+        <td style="color:var(--text-3);font-size:12px">${i+1}</td>
+        <td><strong>${r.marca} ${r.modelo}</strong> <span style="color:var(--text-3);font-size:11px">${r.placa}</span></td>
+        <td>${r.tipo_nombre}</td>
+        <td>${fmt.date(r.fecha)}</td>
+        <td style="color:var(--text-2)">${fmt.km(r.kilometraje)}</td>
+        <td style="font-weight:700;color:var(--navy)">${fmt.money(r.costo)}</td>
+        <td style="font-size:12px;color:var(--text-3)">${r.descripcion||'—'}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteMant(${r.id_mantenimiento})">🗑</button>
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-3)">Sin resultados para los filtros aplicados</td></tr>`;
+}
+
+function applyFilters() {
+  const vid  = document.getElementById('f-vehiculo').value;
+  const tid  = document.getElementById('f-tipo').value;
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const filtered = allData.filter(r =>
+    (!vid  || r.id_vehiculo == vid) &&
+    (!tid  || r.id_tipo     == tid) &&
+    (!from || r.fecha >= from) &&
+    (!to   || r.fecha <= to)
+  );
+  renderTable(filtered);
+  const total = filtered.reduce((s,m) => s+(parseFloat(m.costo)||0), 0);
+  document.getElementById('r-gasto').textContent = fmt.money(total);
+}
+
+function clearFilters() {
+  document.getElementById('f-vehiculo').value = '';
+  document.getElementById('f-tipo').value = '';
+  document.getElementById('f-from').value = '2026-01-01';
+  document.getElementById('f-to').value = today;
+  renderTable(allData);
+}
+
+async function deleteMant(id) {
+  if (!confirm('¿Eliminar este registro de la BD?')) return;
+  try {
+    await API.deleteMant(id);
+    toast('Registro eliminado de la BD ✓');
+    load();
+  } catch(ex) { toast(ex.message,'error'); }
+}
+
+load();
+</script>
+</body>
+</html>
